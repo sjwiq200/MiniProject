@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="CartMapper">
+ 	
+ 	<!-- DTD오류 ==> 결과요소가 연관요소보다 먼저 나와야합니다! -->
+	<resultMap id="cartSelectMap" type="cart">
+		<result property="prodNo" column="prod_no" jdbcType="INTEGER"/>
+		<result property="userId" column="user_id" jdbcType="INTEGER"/>
+		<result property="cartCount" column="cart_count" jdbcType="INTEGER"/>
+	</resultMap>
+	
+	
+	
+	<!-- SQL : INSERT -->
+	<insert 	id="addCart"		parameterType="cart" >
+	 	INSERT
+		INTO cart( prod_no, user_id, cart_count ) 
+		VALUES	 (#{prodNo}, #{userId}, #{cartCount})
+	 </insert>
+	 
+	 <select id="getCartCount" parameterType="int" resultType="int">
+	 	SELECT cart_count 
+	 	FROM cart
+	 	WHERE prod_no=#{prodNo}
+	 </select>
+	 
+	 	 
+	<!-- SQL : SELECT LIST -->
+	<select  id="getCartList"  parameterType="map"	resultMap="cartSelectMap">
+	  	SELECT *
+	  	FROM (	SELECT inner_table.* , <!-- ROWNUM --> @RNUM := @RNUM+1 AS row_seq
+	  					FROM		(	SELECT prod_no, cart_count
+											FROM cart
+											WHERE user_id = #{user.userId}
+											ORDER BY prod_no ) inner_table, (SELECT @RNUM := 0) rownum
+						WHERE <!-- ROWNUM --> @RNUM &lt;= #{search.endRowNum} ) test
+		WHERE row_seq BETWEEN #{search.startRowNum} AND #{search.endRowNum} 
+	 </select>
+	 
+	 	<!--  위 두번째 subQuery 의  
+	 			WHERE ROWNUM &lt;= #{endRowNum} ) 는
+	 			WHERE ROWNUM <= #{endRowNum} ) 의미이며..
+	 			< 는 keyword 로 &lt; 를	사용.
+	 			
+	 			<![CDATA[  ~~~  ]]> 를 이용하여 아래와 같이 사용  할 수 있다.
+	 			CDATA ==> Character Data 의 의미 Java 에서 \n 같은 특수문자 처리  
+
+				WHERE ROWNUM <![CDATA[ <=]]> #{endRowNum} )
+		-->
+		
+		<delete id="removeCart" parameterType="cart">
+			DELETE
+			FROM cart
+			WHERE prod_no = #{prodNo}
+				  AND user_id = #{userId} 
+		</delete>
+	
+	<!-- SQL : SELECT ROW Count -->	 
+	 <select  id="getTotalCount"  parameterType="search"	 resultType="int">
+	  	SELECT COUNT(*)
+	  	FROM(	SELECT prod_no
+				FROM cart
+				WHERE user_id = #{user.userId}
+						 ) countTable						
+	 </select>
+	 
+</mapper>
